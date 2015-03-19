@@ -28,6 +28,7 @@ import static org.junit.Assert.*;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 /**
  *
@@ -39,7 +40,7 @@ public class DijkstraOneToManyTest extends AbstractRoutingAlgorithmTester
     /**
      * Runs the same test with each of the supported traversal modes
      */
-    @Parameterized.Parameters
+    @Parameters(name = "{0}")
     public static Collection<Object[]> configs()
     {
         return Arrays.asList(new Object[][]
@@ -122,7 +123,7 @@ public class DijkstraOneToManyTest extends AbstractRoutingAlgorithmTester
     }
 
     @Test
-    public void testIssue239()
+    public void testIssue239_and362()
     {
         Graph g = createGraph(false);
         g.edge(0, 1, 1, true);
@@ -136,6 +137,9 @@ public class DijkstraOneToManyTest extends AbstractRoutingAlgorithmTester
         DijkstraOneToMany algo = (DijkstraOneToMany) createAlgo(g);
         assertEquals(-1, algo.findEndNode(0, 4));
         assertEquals(-1, algo.findEndNode(0, 4));
+
+        assertEquals(1, algo.findEndNode(0, 1));
+        assertEquals(1, algo.findEndNode(0, 1));
     }
 
     @Test

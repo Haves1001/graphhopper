@@ -48,7 +48,7 @@ public class TestAlgoCollector
             OneRun oneRun )
     {
         List<Path> viaPaths = new ArrayList<Path>();
-        QueryGraph queryGraph = new QueryGraph(algoEntry.originalGraph);
+        QueryGraph queryGraph = new QueryGraph(algoEntry.getQueryGraph());
         queryGraph.lookup(queryList);
         AlgorithmOptions opts = algoEntry.opts;
         FlagEncoder encoder = opts.getFlagEncoder();
@@ -70,10 +70,10 @@ public class TestAlgoCollector
         GHResponse rsp = new GHResponse();
         pathMerger.doWork(rsp, viaPaths, trMap.getWithFallBack(Locale.US));
 
-        if (!rsp.isFound())
+        if (rsp.hasErrors())
         {
-            errors.add(algoEntry + " returns no path! expected distance: " + rsp.getDistance()
-                    + ", expected points: " + oneRun + ". " + queryList);
+            errors.add(algoEntry + " response contains errors. Expected distance: " + rsp.getDistance()
+                    + ", expected points: " + oneRun + ". " + queryList + ", errors:" + rsp.getErrors());
             return this;
         }
 
@@ -148,15 +148,25 @@ public class TestAlgoCollector
 
     public static class AlgoHelperEntry
     {
-        private Graph originalGraph;
+        private Graph queryGraph;
         private final LocationIndex idx;
         private AlgorithmOptions opts;
 
         public AlgoHelperEntry( Graph g, AlgorithmOptions opts, LocationIndex idx )
         {
-            this.originalGraph = g;
+            this.queryGraph = g;
             this.opts = opts;
             this.idx = idx;
+        }
+
+        public Graph getQueryGraph()
+        {
+            return queryGraph;
+        }
+
+        public void setQueryGraph( Graph queryGraph )
+        {
+            this.queryGraph = queryGraph;
         }
 
         public void setAlgorithmOptions( AlgorithmOptions opts )

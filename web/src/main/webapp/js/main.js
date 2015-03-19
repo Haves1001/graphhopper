@@ -15,7 +15,6 @@ if (!host) {
 }
 
 var ghRequest = new GHRequest(host);
-var tmpArgs = parseUrlWithHisto();
 var bounds = {};
 
 var nominatimURL = "https://nominatim.openstreetmap.org/search";
@@ -366,9 +365,9 @@ function initMap(selectLayer) {
     var mapLink = '<a href="http://www.esri.com/">Esri</a>';
     var wholink = 'i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community';
     var esriAerial = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                attribution: osmAttr + '&copy; ' + mapLink + ', ' + wholink,
-                maxZoom: 18
-            });
+        attribution: '&copy; ' + mapLink + ', ' + wholink,
+        maxZoom: 18
+    });
 
     var baseMaps = {
         "Lyrk": lyrk,
@@ -392,7 +391,7 @@ function initMap(selectLayer) {
     map = L.map('map', {
         layers: [defaultLayer],
         contextmenu: true,
-        contextmenuWidth: 140,
+        contextmenuWidth: 145,
         contextmenuItems: [{
                 separator: true,
                 index: 3,
@@ -566,9 +565,9 @@ function setEndCoord(e) {
     routeIfAllResolved();
 }
 
-function routeIfAllResolved() {
+function routeIfAllResolved(doQuery) {
     if (ghRequest.route.isResolved()) {
-        routeLatLng(ghRequest);
+        routeLatLng(ghRequest, doQuery);
         return true;
     }
     return false;
@@ -599,7 +598,8 @@ function setFlag(coord, index) {
                     draggable: true,
                     contextmenu: true,
                     contextmenuItems: [{
-                            text: 'Marker ' + ((toFrom === FROM) ? 'Start' : ((toFrom === TO) ? 'End' : 'Intermediate')),
+                            text: 'Marker ' + ((toFrom === FROM) ?
+                                    'Start' : ((toFrom === TO) ? 'End' : 'Intermediate ' + index)),
                             disabled: true,
                             index: 0,
                             state: 2
@@ -620,7 +620,8 @@ function setFlag(coord, index) {
                             state: 2
                         }],
                     contextmenuAtiveState: 2
-                }).addTo(routingLayer).bindPopup(((toFrom === FROM) ? 'Start' : ((toFrom === TO) ? 'End' : 'Intermediate')));
+                }).addTo(routingLayer).bindPopup(((toFrom === FROM) ?
+                'Start' : ((toFrom === TO) ? 'End' : 'Intermediate ' + index)));
         // intercept openPopup
         marker._openPopup = marker.openPopup;
         marker.openPopup = function () {
@@ -1062,11 +1063,14 @@ function routeLatLng(request, doQuery) {
 
             var exportLink = $("#export-link a");
             exportLink.attr('href', urlForHistory);
-            var startOsmLink = $("<a>start</a>");
-            startOsmLink.attr("href", "https://www.openstreetmap.org/?zoom=14&mlat=" + request.from.lat + "&mlon=" + request.from.lng);
-            var endOsmLink = $("<a>end</a>");
-            endOsmLink.attr("href", "https://www.openstreetmap.org/?zoom=14&mlat=" + request.to.lat + "&mlon=" + request.to.lng);
-            hiddenDiv.append("<br/><span>View on OSM: </span>").append(startOsmLink).append(endOsmLink);
+            var osmRouteLink = $("<br/><a>view on OSM</a>");
+
+            var osmVehicle = "bicycle";
+            if (request.vehicle.toUpperCase() === "FOOT") {
+                osmVehicle = "foot";
+            }
+            osmRouteLink.attr("href", "http://www.openstreetmap.org/directions?engine=graphhopper_" + osmVehicle + "&route=" + encodeURIComponent(request.from.lat + "," + request.from.lng + ";" + request.to.lat + "," + request.to.lng));
+            hiddenDiv.append(osmRouteLink);
 
             var osrmLink = $("<a>OSRM</a>");
             osrmLink.attr("href", "http://map.project-osrm.org/?loc=" + request.from + "&loc=" + request.to);
@@ -1146,14 +1150,16 @@ function addInstruction(main, instr, instrIndex, lngLat) {
         sign = "marker-icon-red";
     else if (sign === 5)
         sign = "marker-icon-blue";
+    else if (sign === 6)
+        sign = "roundabout";
     else
         throw "did not found sign " + sign;
     var title = instr.text;
-    if (instr.annotationText) {
+    if (instr.annotation_text) {
         if (!title)
-            title = instr.annotationText;
+            title = instr.annotation_text;
         else
-            title = title + ", " + instr.annotationText;
+            title = title + ", " + instr.annotation_text;
     }
     var distance = instr.distance;
     var str = "<td class='instr_title'>" + title + "</td>";
@@ -1410,14 +1416,15 @@ function setAutoCompleteList(index) {
         },
         serviceUrl: function () {
             // see https://graphhopper.com/#directions-api
-            return ghRequest.createGeocodeURL(host);
+            return ghRequest.createGeocodeURL(host, index - 1);
         },
         transformResult: function (response, originalQuery) {
             response.suggestions = [];
-            for (var i = 0; i < response.hits.length; i++) {
-                var hit = response.hits[i];
-                response.suggestions.push({value: dataToText(hit), data: hit});
-            }
+            if (response.hits)
+                for (var i = 0; i < response.hits.length; i++) {
+                    var hit = response.hits[i];
+                    response.suggestions.push({value: dataToText(hit), data: hit});
+                }
             return response;
         },
         onSearchError: function (element, q, jqXHR, textStatus, errorThrown) {
@@ -1439,7 +1446,7 @@ function setAutoCompleteList(index) {
             req.setCoord(point.lat, point.lng);
 
             req.input = suggestion.value;
-            if (!routeIfAllResolved())
+            if (!routeIfAllResolved(true))
                 focus(req, 15, index);
 
             myAutoDiv.autocomplete().enable();

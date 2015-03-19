@@ -46,6 +46,14 @@ public class InstructionList implements Iterable<Instruction>
         this.tr = tr;
     }
 
+    public void replaceLast( Instruction instr )
+    {
+        if (instructions.isEmpty())
+            throw new IllegalStateException("Cannot replace last instruction as list is empty");
+
+        instructions.set(instructions.size() - 1, instr);
+    }
+
     public void add( Instruction instr )
     {
         instructions.add(instr);
@@ -59,47 +67,6 @@ public class InstructionList implements Iterable<Instruction>
     public int size()
     {
         return instructions.size();
-    }
-
-    /**
-     * Returns the descriptions of the distance per instruction.
-     */
-    public List<String> createDistances( boolean mile )
-    {
-        List<String> labels = new ArrayList<String>(instructions.size());
-        for (int i = 0; i < instructions.size(); i++)
-        {
-            double distInMeter = instructions.get(i).getDistance();
-            if (mile)
-            {
-                // calculate miles
-                double distInMiles = distInMeter / 1000 / DistanceCalcEarth.KM_MILE;
-                if (distInMiles < 0.9)
-                {
-                    labels.add((int) Helper.round(distInMiles * 5280, 1) + " " + tr.tr("ftAbbr"));
-                } else
-                {
-                    if (distInMiles < 100)
-                        labels.add(Helper.round(distInMiles, 2) + " " + tr.tr("miAbbr"));
-                    else
-                        labels.add((int) Helper.round(distInMiles, 1) + " " + tr.tr("miAbbr"));
-                }
-            } else
-            {
-                if (distInMeter < 950)
-                {
-                    labels.add((int) Helper.round(distInMeter, 1) + " " + tr.tr("mAbbr"));
-                } else
-                {
-                    distInMeter /= 1000;
-                    if (distInMeter < 100)
-                        labels.add(Helper.round(distInMeter, 2) + " " + tr.tr("kmAbbr"));
-                    else
-                        labels.add((int) Helper.round(distInMeter, 1) + " " + tr.tr("kmAbbr"));
-                }
-            }
-        }
-        return labels;
     }
 
     public List<Map<String, Object>> createJson()
@@ -119,13 +86,14 @@ public class InstructionList implements Iterable<Instruction>
             instrJson.put("text", Helper.firstBig(str));
             if (!ia.isEmpty())
             {
-                instrJson.put("annotationText", ia.getMessage());
-                instrJson.put("annotationImportance", ia.getImportance());
+                instrJson.put("annotation_text", ia.getMessage());
+                instrJson.put("annotation_importance", ia.getImportance());
             }
 
             instrJson.put("time", instruction.getTime());
             instrJson.put("distance", Helper.round(instruction.getDistance(), 3));
             instrJson.put("sign", instruction.getSign());
+            instrJson.putAll(instruction.getExtraInfoJSON());
 
             int tmpIndex = pointsIndex + instruction.getPoints().size();
             // the last instruction should not point to the next instruction
